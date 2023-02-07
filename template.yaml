@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM Template for lambda-dynamodb-example
+
+Parameters:
+  StageName:
+    Type: String
+    Description: Stage name to deploy resources to
+    AllowedValues:
+      - dev
+      - stage
+      - production
+    Default: dev   
+      
+  MusicApiLambdaFunctionName:
+    Type: String
+    Description: function name 
+    Default: music-api
+
+
+Resources:
+  MusicApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: target/dynamoappsample-1.0-SNAPSHOT.jar
+      Handler: com.aws.dynnamoappsample.lambda.LambdaRequestHandler::handleRequest
+      FunctionName: !Ref MusicApiLambdaFunctionName
+      Architectures:
+        - arm64
+      Runtime: java11
+      MemorySize: 512
+      Timeout: 300
+      Tracing: Active
+      Tags:
+        Application: Music
+      Events:
+        HealthCheck:
+          Type: Api
+          Properties:
+            Path: /v1/health
+            Method: get               
+        GetMusic:
+          Type: Api
+          Properties:
+            Path: /v1/music
+            Method: get
+        PostMusic:
+          Type: Api
+          Properties:
+            Path: /v1/music
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref musicDDBTable        
+        
+  musicDDBTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: music
+      PrimaryKey:
+        Name: artist
+        Type: String 
+        
+Outputs:
+  ApiEndpoint:
+    Description: "API endpoint"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}"
